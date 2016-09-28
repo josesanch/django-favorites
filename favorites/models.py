@@ -1,9 +1,9 @@
-#encoding=utf-8
+# encoding=utf-8
 
-from django.db import models
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes import generic
+from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 if hasattr(settings, 'AUTH_USER_MODEL'):
@@ -13,7 +13,7 @@ else:
 
 
 class FavoriteManager(models.Manager):
- 
+
     def create_favorite(self, user, obj):
         """create Favorite for obj and user.
         """
@@ -23,24 +23,36 @@ class FavoriteManager(models.Manager):
         favorite.save()
         return favorite
 
+    def del_favorite(self, user, obj):
+        """del user's Favorite for obj.
+        """
+        content_type = ContentType.objects.get_for_model(type(obj))
+        self.get_queryset().filter(user=user, content_type=content_type, object_id=obj.pk).delete()
+
+    def favorites_obj_of_user(self, user, obj):
+        """get user's obj. It can tell whether user has favorite obj
+        """
+        content_type = ContentType.objects.get_for_model(type(obj))
+        return self.get_queryset().filter(user=user, content_type=content_type, object_id=obj.pk)
+
     def favorites_for_obj(self, obj):
         """get favorites for specific object.
         """
         content_type = ContentType.objects.get_for_model(type(obj))
-        return self.get_query_set().filter(content_type=content_type,
-                                           object_id=obj.pk)
+        return self.get_queryset().filter(content_type=content_type,
+                                          object_id=obj.pk)
 
     def favorites_of_user(self, user):
         """get user's favorites item
         """
-        return self.get_query_set().filter(user=user)
+        return self.get_queryset().filter(user=user)
 
 
 class Favorite(models.Model):
     user = models.ForeignKey(User)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
-    content_object = generic.GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')
     created_time = models.DateTimeField(auto_now_add=True)
 
     objects = FavoriteManager()
